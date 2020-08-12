@@ -1,0 +1,70 @@
+resources:      
+  repositories: 
+  - repository: module
+    name: module
+    type: git 
+    ref: master #branch name
+
+steps:
+- checkout: self
+- checkout: module
+
+#copy files from module repo to CNR repo 
+- task: CopyFiles@2
+  displayName: CopyFilesFromModuleToCNR
+  inputs:
+    contents: '$(Agent.BuildDirectory)/s/module/**'
+    targetFolder: '$(Agent.BuildDirectory)/s/CNR/TOR-IT-DEV-RG'
+    
+
+- script: |
+    ls '.'
+  
+  displayName: 'List Files'    
+
+# Run 'terraform init'
+- task: TerraformTaskV1@0
+  displayName: 'init'
+  inputs:
+        command: 'init'
+        workingDirectory: 'CNR/TOR-IT-DEV-RG'
+        environmentServiceNameAzureRM: 'MyServiceConnection'
+        backendType: 'azurerm'
+        backendServiceArm: 'MyServiceConnection'
+        ensureBackend: true
+        backendAzureRmResourceGroupName: 'cloud-shell-storage-eastus'
+        backendAzureRmResourceGroupLocation: 'eastus'
+        backendAzureRmStorageAccountName: 'cs210032000d56593e0'
+        backendAzureRmStorageAccountSku: 'Standard_LRS'
+        backendAzureRmContainerName: 'statecontainer'
+        backendAzureRmKey: 'terraform.tfstate'
+
+- task: TerraformTaskV1@0
+  displayName: 'validate'
+  inputs:
+         command: 'validate'
+         workingDirectory: 'CNR/TOR-IT-DEV-RG'
+
+# Run 'terraform plan'
+- task: TerraformTaskV1@0
+  displayName: plan
+  inputs:
+    provider: 'azurerm'
+    command: 'plan'
+    workingDirectory: 'CNR/TOR-IT-DEV-RG'
+    environmentServiceNameAzureRM: 'MyServiceConnection'
+    backendServiceArm: 'MyServiceConnection'
+    backendAzureRmResourceGroupName: 'cloud-shell-storage-eastus'
+    backendAzureRmStorageAccountName: 'cs210032000d56593e0'
+    backendAzureRmContainerName: 'statecontainer'
+    backendAzureRmKey: 'terraform.tfstate'
+
+# Run 'terraform apply'
+- task: TerraformTaskV1@0
+  displayName: 'apply'
+  inputs:
+         command: 'apply'
+         workingDirectory: 'CNR/TOR-IT-DEV-RG'
+         environmentServiceNameAzureRM: 'MyServiceConnection'
+         commandOptions: '-auto-approve'
+
